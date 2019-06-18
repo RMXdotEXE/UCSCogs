@@ -41,26 +41,26 @@ class Suggestions:
                 return
             firstAvailableChannel = self.bot.get_channel(id=channelIDs[0]).mention
             deleteChannMsg = await self.bot.say("Wrong channel; use {}.".format(firstAvailableChannel))
-            await asyncio.sleep(15)
+            await asyncio.sleep(5)
             if not hasPerms:
                 await self.bot.delete_message(deletePermMsg)
             await self.bot.delete_message(deleteChannMsg)
             return
+        else:
+            channelToPostTo = channel.id
 
         embedTitle = "**Suggestion by {}**".format(user.name)
         embedDescription = msg.content[9:]
         embedColor = 0x0C60E4
         embed = discord.Embed(title=embedTitle, description=embedDescription, color=embedColor)
 
-        channelIDs = self.getEligibleSuggestionChannels(ctx.message.channel.server)
-        for channelID in channelIDs:
-            postedMsg = await self.bot.send_message(discord.Object(id=channelID), embed=embed)
-            await self.bot.add_reaction(postedMsg, "👍")
-            await self.bot.add_reaction(postedMsg, "😑")
-            await self.bot.add_reaction(postedMsg, "👎")
+        postedMsg = await self.bot.send_message(discord.Object(id=channelToPostTo), embed=embed)
+        await self.bot.add_reaction(postedMsg, "👍")
+        await self.bot.add_reaction(postedMsg, "😑")
+        await self.bot.add_reaction(postedMsg, "👎")
             
         if not hasPerms:
-            await asyncio.sleep(10)
+            await asyncio.sleep(5)
             await self.bot.delete_message(deletePermMsg)
         return
 
@@ -80,19 +80,20 @@ class Suggestions:
             self.suggestData[server.id] = []
             acceptedChannels = []
 
+        await self.bot.delete_message(ctx.message)
         if not (channel.id in self.suggestData[server.id]):
             acceptedChannels.append(channel.id)
             self.suggestData[server.id] = acceptedChannels
             dataIO.save_json(self.filePath, self.suggestData)
             deleteMsg = await self.bot.say("This channel now accepts `!suggest`ions.")
-            await asyncio.sleep(15)
+            await asyncio.sleep(5)
             await self.bot.delete_message(deleteMsg)
         else:
             acceptedChannels.remove(channel.id)
             self.suggestData[server.id] = acceptedChannels
             dataIO.save_json(self.filePath, self.suggestData)
             deleteMsg = await self.bot.say("This channel no longer accepts `!suggest`ions.")
-            await asyncio.sleep(15)
+            await asyncio.sleep(5)
             await self.bot.delete_message(deleteMsg)
         return
 

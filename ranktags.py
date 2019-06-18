@@ -72,7 +72,6 @@ class RankTags:
         
         user = ctx.message.author
         userRoles = user.roles
-        await self.bot.delete_message(ctx.message)
         
         for role in userRoles:
             if Ranks.hasRank(role.name):
@@ -87,13 +86,14 @@ class RankTags:
     async def adjustRole(self, ctx, role):
         user = ctx.message.author
         server = ctx.message.server
+        await self.bot.delete_message(ctx.message)
         grabbedRole = discord.utils.get(server.roles, name=role)
         if grabbedRole is None:
             await self.bot.say("The role **{}** doesn't exist yet!".format(role))
             return
         if grabbedRole in user.roles:
             await self.bot.remove_roles(user, grabbedRole)
-            deleteMsg = await self.bot.say("{}\nYou will now receive **{}** pings.".format(user.mention, grabbedRole.name[:-1]))
+            deleteMsg = await self.bot.say("{}\nYou will no longer receive **{}** pings.".format(user.mention, grabbedRole.name[:-1]))
         else:
             await self.bot.add_roles(user, grabbedRole)
             deleteMsg =  await self.bot.say("{}\nYou will now receive **{}** pings.".format(user.mention, grabbedRole.name[:-1]))
