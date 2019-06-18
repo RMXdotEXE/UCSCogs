@@ -189,7 +189,11 @@ class RankTags:
             underRole = roleResponse.position
             for rlRole in requiredRoles:
                 role = discord.utils.get(server.roles, name=rlRole)
-                await self.bot.move_role(server, role, underRole)
+                try:
+                    await self.bot.move_role(server, role, underRole)
+                except discord.errors.HTTPException:
+                    await self.bot.say("Apparently I don't have permissions, but this is Discord's fault. Give me the \"Manage Roles\" permission just to be safe.")
+                    break
                 await asyncio.sleep(1)
             await self.bot.say("The roles have been ordered; navigate to Server Settings and modify the roles to suit " \
                                "your liking.")
