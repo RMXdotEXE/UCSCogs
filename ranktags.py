@@ -72,13 +72,16 @@ class RankTags:
         
         user = ctx.message.author
         userRoles = user.roles
+        await self.bot.delete_message(ctx.message)
         
         for role in userRoles:
             if Ranks.hasRank(role.name):
                 await self.adjustRole(ctx, "{}\'".format(role.name))
                 return
             
-        await self.bot.say("You don't have an RL Rank role. Contact staff to assign a role to you.")
+        deleteMsg = await self.bot.say("{}\nYou don't have an RL Rank role. Contact staff to assign a role to you.".format(user.mention))
+        await asyncio.sleep(10)
+        await self.bot.delete_message(deleteMsg)
         return
                 
     async def adjustRole(self, ctx, role):
@@ -90,10 +93,12 @@ class RankTags:
             return
         if grabbedRole in user.roles:
             await self.bot.remove_roles(user, grabbedRole)
-            await self.bot.say("Removed **{}** from your roles.".format(grabbedRole.name))
+            deleteMsg = await self.bot.say("{}\nYou will now receive **{}** pings.".format(user.mention, grabbedRole.name[:-1]))
         else:
             await self.bot.add_roles(user, grabbedRole)
-            await self.bot.say("Added **{}** to your roles.".format(grabbedRole.name))
+            deleteMsg =  await self.bot.say("{}\nYou will now receive **{}** pings.".format(user.mention, grabbedRole.name[:-1]))
+        await asyncio.sleep(10)
+        await self.bot.delete_message(deleteMsg)
         return
             
     @commands.command(pass_context=True)
@@ -202,7 +207,7 @@ class RankTags:
         
     @commands.command(pass_context=True)
     @checks.admin_or_permissions(manage_server=True)
-    async def deleteAllRanks(self, ctx):
+    async def deleteAllRanks(self, ctx, deleteAll:bool=False, areUSure:bool=False, absolutelySure:bool=False):
         """Deletes all RL Rank roles. USE WISELY."""
         
         await self.bot.say("Deleting all RL Rank roles...")
@@ -216,8 +221,12 @@ class RankTags:
         for role in rlRankRoles:
             deleteRole = discord.utils.get(server.roles, name=role)
             if deleteRole is None:
-                break
-            await self.bot.delete_role(server, deleteRole)
+                continue
+            if (not ("\'" in deleteRole.name)) and deleteAll and areUSure and absolutelySure:
+                await self.bot.delete_role(server, deleteRole)
+            else:
+                if "\'" in deleteRole.name:
+                    await self.bot.delete_role(server, deleteRole)
             
         await self.bot.say("All RL ranks deleted. Use `!scanRanks` to reinstantiate them.")
 
