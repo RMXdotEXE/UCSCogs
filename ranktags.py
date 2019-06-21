@@ -67,7 +67,7 @@ class RankTags:
         self.bot = bot
 
     @commands.command(pass_context=True)
-    async def toggleTags(self, ctx):
+    async def togglePings(self, ctx):
         """Add/remove a taggable version of your rank role."""
         
         user = ctx.message.author
@@ -99,16 +99,6 @@ class RankTags:
             deleteMsg =  await self.bot.say("{}\nYou will now receive **{}** pings.".format(user.mention, grabbedRole.name[:-1]))
         await asyncio.sleep(10)
         await self.bot.delete_message(deleteMsg)
-        return
-    
-    @commands.command(pass_context=True)
-    async def printHierarchy(self, ctx):
-        server = ctx.message.server
-        missingRolesMsg = ""
-        
-        for role in server.role_hierarchy:
-            missingRolesMsg += "INDEX {}: {}\n".format(server.role_hierarchy.index(role), role.name)
-        await self.bot.say(missingRolesMsg)
         return
             
     @commands.command(pass_context=True)
