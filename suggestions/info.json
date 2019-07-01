@@ -3,8 +3,6 @@
     "INSTALL_MSG" : "",
     "NAME" : "suggestions",
     "SHORT" : "[p]suggest",
-    "DESCRIPTION" : "",
-    "TAGS" : [""],
-    "REQUIREMENTS" : [""],
+    "DESCRIPTION" : "suggest command that does suggest things",
     "HIDDEN" : false
 }
