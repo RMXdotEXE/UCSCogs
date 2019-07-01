@@ -1,10 +1,7 @@
 {
     "AUTHOR" : "RMXdotEXE",
-    "INSTALL_MSG" : "",
     "NAME" : "ranktags",
     "SHORT" : "[p]ranktags",
-    "DESCRIPTION" : "",
-    "TAGS" : [""],
-    "REQUIREMENTS" : [""],
+    "DESCRIPTION" : "ranktags meant to do a ranktag thing",
     "HIDDEN" : false
 }
