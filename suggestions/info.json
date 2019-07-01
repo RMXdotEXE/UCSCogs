@@ -1,8 +1,10 @@
 {
     "AUTHOR" : "RMXdotEXE",
     "INSTALL_MSG" : "",
-    "NAME" : "suggestions",
-    "SHORT" : "[p]suggest",
-    "DESCRIPTION" : "suggest command that does suggest things",
+    "NAME" : "Suggestions",
+    "SHORT" : "Allows proper suggestions.",
+    "DESCRIPTION" : "This cog allows users to suggest their ideas via a command and through a bot.",
+    "TAGS" : [],
+    "REQUIREMENTS" : [],
     "HIDDEN" : false
 }
