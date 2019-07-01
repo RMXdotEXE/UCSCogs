@@ -1,7 +1,10 @@
 {
     "AUTHOR" : "RMXdotEXE",
-    "NAME" : "ranktags",
-    "SHORT" : "[p]ranktags",
-    "DESCRIPTION" : "ranktags meant to do a ranktag thing",
+    "INSTALL_MSG" : "",
+    "NAME" : "RankTags",
+    "SHORT" : "Manages taggable versions of RL ranks.",
+    "DESCRIPTION" : "This cog allows users to decide whether or not they would like to be tagged for their involvement in a particular Rocket League rank.",
+    "TAGS" : [],
+    "REQUIREMENTS" : [],
     "HIDDEN" : false
 }
