@@ -1,8 +1,9 @@
 import discord
-from discord.ext import commands
+from redbot.core import commands
 from enum import Enum
-from .utils import checks
+from redbot.core import checks
 import asyncio
+from test.test_dummy_thread import DELAY
 
 class Ranks(Enum):
     GRANDCHAMPION2000 = "Grand Champion - 2000"
@@ -11,28 +12,29 @@ class Ranks(Enum):
     GRANDCHAMPION1700 = "Grand Champion - 1700"
     GRANDCHAMPION1600 = "Grand Champion - 1600"
     GRANDCHAMPION1500 = "Grand Champion - 1500"
-    CHAMPION3         = "Champion III"
-    CHAMPION2         = "Champion II"
-    CHAMPION1         = "Champion I"
-    DIAMOND3          = "Diamond III"
-    DIAMOND2          = "Diamond II"
-    DIAMOND1          = "Diamond I"
-    PLATINUM3         = "Platinum III"
-    PLATINUM2         = "Platinum II"
-    PLATINUM1         = "Platinum I"
-    GOLD3             = "Gold III"
-    GOLD2             = "Gold II"
-    GOLD1             = "Gold I"
-    SILVER3           = "Silver III"
-    SILVER2           = "Silver II"
-    SILVER1           = "Silver I"
-    BRONZE3           = "Bronze III"
-    BRONZE2           = "Bronze II"
-    BRONZE1           = "Bronze I"
+    CHAMPION3 = "Champion III"
+    CHAMPION2 = "Champion II"
+    CHAMPION1 = "Champion I"
+    DIAMOND3 = "Diamond III"
+    DIAMOND2 = "Diamond II"
+    DIAMOND1 = "Diamond I"
+    PLATINUM3 = "Platinum III"
+    PLATINUM2 = "Platinum II"
+    PLATINUM1 = "Platinum I"
+    GOLD3 = "Gold III"
+    GOLD2 = "Gold II"
+    GOLD1 = "Gold I"
+    SILVER3 = "Silver III"
+    SILVER2 = "Silver II"
+    SILVER1 = "Silver I"
+    BRONZE3 = "Bronze III"
+    BRONZE2 = "Bronze II"
+    BRONZE1 = "Bronze I"
     
     @classmethod
     def hasRank(cls, rank):
         return any(rank == ranking.value for ranking in cls)
+
     
 class RankColors(Enum):
     GRANDCHAMPION2000 = 0x740bfa
@@ -41,140 +43,178 @@ class RankColors(Enum):
     GRANDCHAMPION1700 = 0x740bfa
     GRANDCHAMPION1600 = 0x740bfa
     GRANDCHAMPION1500 = 0x740bfa
-    CHAMPION3         = 0xb62db6
-    CHAMPION2         = 0xee5aee
-    CHAMPION1         = 0xf999fd
-    DIAMOND3          = 0x0f2f89
-    DIAMOND2          = 0x0549d6
-    DIAMOND1          = 0x427fff
-    PLATINUM3         = 0x2eb9b9
-    PLATINUM2         = 0x43d8d8
-    PLATINUM1         = 0x7eecec
-    GOLD3             = 0xdfb41f
-    GOLD2             = 0xcfa809
-    GOLD1             = 0xceb505
-    SILVER3           = 0x7c7b7b
-    SILVER2           = 0x9b9b9b
-    SILVER1           = 0xb4b4b4
-    BRONZE3           = 0x3b1e01
-    BRONZE2           = 0x864e1f
-    BRONZE1           = 0xbe7f48
+    CHAMPION3 = 0xb62db6
+    CHAMPION2 = 0xee5aee
+    CHAMPION1 = 0xf999fd
+    DIAMOND3 = 0x0f2f89
+    DIAMOND2 = 0x0549d6
+    DIAMOND1 = 0x427fff
+    PLATINUM3 = 0x2eb9b9
+    PLATINUM2 = 0x43d8d8
+    PLATINUM1 = 0x7eecec
+    GOLD3 = 0xdfb41f
+    GOLD2 = 0xcfa809
+    GOLD1 = 0xceb505
+    SILVER3 = 0x7c7b7b
+    SILVER2 = 0x9b9b9b
+    SILVER1 = 0xb4b4b4
+    BRONZE3 = 0x3b1e01
+    BRONZE2 = 0x864e1f
+    BRONZE1 = 0xbe7f48
+
+embedColor = 0x0C60E4
+notified = False
     
-class RankTags:
+class RankTags(commands.Cog):
     """The RankTags cog that controls users' desires to opt-in/out of taggable versions of their roles."""
 
-    def __init__(self, bot):
-        self.bot = bot
-
-    @commands.command(pass_context=True)
+    @commands.command(aliases=['tp'])
     async def togglePings(self, ctx):
         """Add/remove a taggable version of your rank role."""
         
-        user = ctx.message.author
+        user = ctx.author
         userRoles = user.roles
+        
+        try:
+            await ctx.message.delete()
+        except discord.errors.Forbidden:
+            global notified
+            notified = notified
+            if not notified:
+                await ctx.send("I require permissions to delete messages. This won't stop the function, but allows me to automatically delete messages.")
+                notified = True
         
         for role in userRoles:
             if Ranks.hasRank(role.name):
                 await self.adjustRole(ctx, "{}\'".format(role.name))
                 return
             
-        deleteMsg = await self.bot.say("{}\nYou don't have an RL Rank role. Contact staff to assign a role to you.".format(user.mention))
-        await asyncio.sleep(10)
-        await self.bot.delete_message(deleteMsg)
+        msgString = "{}\nYou don't have an RL Rank role. Contact staff to assign a role to you.".format(user.mention)
+        await self.concludeFunction(ctx, msgString)
         return
                 
     async def adjustRole(self, ctx, role):
-        user = ctx.message.author
-        server = ctx.message.server
-        await self.bot.delete_message(ctx.message)
-        grabbedRole = discord.utils.get(server.roles, name=role)
+        user = ctx.author
+        guild = ctx.guild
+        await ctx.message.delete()
+        grabbedRole = discord.utils.get(guild.roles, name=role)
         if grabbedRole is None:
-            await self.bot.say("The role **{}** doesn't exist yet!".format(role))
-            return
+            msgString = "The role **{}** doesn't exist yet!".format(role)
         if grabbedRole in user.roles:
-            await self.bot.remove_roles(user, grabbedRole)
-            deleteMsg = await self.bot.say("{}\nYou will no longer receive **{}** pings.".format(user.mention, grabbedRole.name[:-1]))
+            await user.remove_roles(grabbedRole)
+            msgString = "{}\nYou will no longer receive **{}** pings.".format(user.mention, grabbedRole.name[:-1])
         else:
-            await self.bot.add_roles(user, grabbedRole)
-            deleteMsg =  await self.bot.say("{}\nYou will now receive **{}** pings.".format(user.mention, grabbedRole.name[:-1]))
-        await asyncio.sleep(10)
-        await self.bot.delete_message(deleteMsg)
+            await user.add_roles(grabbedRole)
+            msgString = "{}\nYou will now receive **{}** pings.".format(user.mention, grabbedRole.name[:-1])
+        await self.concludeFunction(ctx, msgString)
         return
-            
-    @commands.command(pass_context=True)
-    @checks.admin_or_permissions(manage_server=True)
+
+    @commands.command(aliases=['sr'])
+    @checks.admin_or_permissions(manage_guild=True)
     async def scanRanks(self, ctx):
         """Creates place-holding roles that don't currently exist."""
 
-        server = ctx.message.server
-        serverRoles = []
+        def embedMsg(text, _title:str = "**Scanning Ranks**"):
+            return discord.Embed(title=_title, description=text, color=embedColor)
+        
+        guild = ctx.guild
+        user = ctx.author
+        guildRoles = []
         missingRoles = []
         requiredRoles = []
         missingRolesMsg = ""
         alreadyDone = False
-        rolesMsg = None
         
+        try:
+            await ctx.message.delete()
+        except discord.errors.Forbidden:
+            global notified
+            notified = notified
+            if not notified:
+                await ctx.send("I require permissions to delete messages. This won't stop the function, but allows me to automatically delete messages.")
+                notified = True
+
         for rank in Ranks:
-            #requiredRoles.append("{}\'".format(rank.value))
             requiredRoles.append(rank.value)
         for rank in Ranks:
             requiredRoles.append("{}\'".format(rank.value))
             
-        for roleObject in server.roles:
-            serverRoles.append(roleObject.name)
+        for roleObject in guild.roles:
+            guildRoles.append(roleObject.name)
 
         for entry in requiredRoles:
-            if not (entry in serverRoles):
+            if not (entry in guildRoles):
                 missingRoles.append(entry)
         
+        tmp = 0
         for entry in missingRoles:
-            missingRolesMsg += "{}\n".format(entry)
-            x = entry
+            if tmp < 10:
+                missingRolesMsg += "{}\n".format(entry)
+            tmp += 1
+            
+        if tmp >= 10:
+            missingRolesMsg += "+ {} more...".format(tmp)
         
         if missingRolesMsg == "":
-            await self.bot.say("All roles are already implemented in the server. \n Would you like to re-order them anyways?")
+            # Roles already implemented, dont go in loop.
             alreadyDone = True
+            msgText = "All roles are already implemented in the server. \n Would you like to re-order them anyways?"
+            msg = await ctx.send(embed=embedMsg(msgText))
+            await msg.add_reaction('✅')
+            await msg.add_reaction('🚫')
         else:
-            rolesMsg = await self.bot.say("These roles are missing from the server: \n{}".format(missingRolesMsg))
-            await self.bot.say("Would you like me to automatically create the missing roles?")
-        answer = await self.bot.wait_for_message(timeout=15, author=ctx.message.author)
-        if not rolesMsg is None:
-            await self.bot.delete_message(rolesMsg)
-        
-        if answer is None:
-            await self.bot.say("Cancelling operation; no response.")
-            await asyncio.sleep(10)
-            return
-        answer = answer.content
-        
-        if answer == "yes":
-            await self.bot.say("Say the role that will be the first role above the RL Rank hierarchy.")
-        else:
-            await self.bot.say("Cancelling operation.")
-            await asyncio.sleep(10)
+            # Some roles not implemented, go in the loop.
+            msgText = "These roles are missing from the server: \n{}\nWould you like me to automatically create them?".format(missingRolesMsg)
+            msg = await ctx.send(embed=embedMsg(msgText))
+            await msg.add_reaction('✅')
+            await msg.add_reaction('🚫')
+
+        # ✅: First create roles if not alreadyDone, then call reorder
+        try:
+            reaction, user = await ctx.bot.wait_for('reaction_add', check=lambda r, u: \
+                (u == user and (str(r.emoji) == '✅' or str(r.emoji) == '🚫')), timeout=15)
+        except asyncio.TimeoutError:
+            await msg.clear_reactions()
+            await msg.edit(embed=embedMsg("Cancelling operation; no response."))
+            await self.killMsg(msg)
             return
         
-        answer = await self.bot.wait_for_message(timeout=30, author=ctx.message.author)
-        if answer is None:
-            await self.bot.say("Cancelling operation; no response.")
-            await asyncio.sleep(10)
+        if str(reaction.emoji) == '✅':
+            await msg.clear_reactions()
+            msgText = "Say the role that will be the first role above the RL Rank hierarchy."
+            await msg.edit(embed=embedMsg(msgText))
+        elif str(reaction.emoji) == '🚫':
+            await msg.clear_reactions()
+            await msg.edit(embed=embedMsg("Cancelling operation; user denied action."))
+            await self.killMsg(msg)
             return
-        answer = answer.content
         
+        try:   
+            msgResponse = await ctx.bot.wait_for('message', check=lambda m: (m.author == user), timeout=15)
+        except asyncio.TimeoutError:
+            await msg.edit(embed=embedMsg("Cancelling operation; no response."))
+            await self.killMsg(msg)
+            return
+        answer = msgResponse.content
+        await msgResponse.delete()
+        # answer is in form of either "ExampleRole" or "@ExampleRole". Remove the @ if present
         if "@" in answer:
             answer = answer[1:]
-        roleResponse = discord.utils.get(server.roles, name=answer)
+
+        # Grab the role
+        roleResponse = discord.utils.get(guild.roles, name=answer)
         if roleResponse is None:
-            await self.bot.say("That role doesn't exist. Cancelling operation incase of unwanted results.")
-            await asyncio.sleep(10)
+            msgText = "That role doesn't exist. Cancelling operation incase of unwanted results."
+            await msg.edit(embed=embedMsg(msgText))
             return
         else:
+            # all good, start process. create roles if not alreadyDone
             if not alreadyDone:
-                await self.bot.say("Adding roles...")
+                await msg.edit(embed=embedMsg(text="Adding the required roles...", _title="**Adding Roles**"))
                 for entry in missingRoles:
-                    await self.bot.create_role(server, name=entry)
+                    await guild.create_role(name=entry)
                 for rlRole in requiredRoles:
-                    role = discord.utils.get(server.roles, name=rlRole)
+                    role = discord.utils.get(guild.roles, name=rlRole)
                     perms = role.permissions
                     perms.update(mention_everyone=False, send_tts_messages=True)
                     if "\'" in rlRole:
@@ -185,32 +225,55 @@ class RankTags:
                         color = RankColors[Ranks(rlRole).name]
                         mentionable = False
                         hoist = True
-                    await self.bot.edit_role(server, role,
-                                             color=color,
-                                             mentionable=mentionable,
-                                             hoist=hoist,
-                                             permissions=perms)
-                await self.bot.say("The roles have been created; some time will take before they are fully ordered correctly.")
+                    await role.edit(color=color,
+                                    mentionable=mentionable,
+                                    hoist=hoist,
+                                    permissions=perms)
+                    msgText = "The roles have been created; reordering them around __{}__. This may take time.".format(answer)
+                await msg.edit(embed=embedMsg(msgText))
             else:
-                await self.bot.say("Reordering roles; some time will take before they are fully ordered correctly.")
+                msgText = "Reordering roles about __{}__. This may take time.".format(answer)
+                await msg.edit(embed=embedMsg(msgText, _title="**Reordering Roles**"))
             await self.reOrderRoles(ctx, requiredRoles, roleResponse)
+            msgText = "The roles have been managed. If there are any problems, DM @RMX."
+            await msg.edit(embed=embedMsg(msgText))
+            await self.killMsg(msg)
         return
     
     @commands.command(pass_context=True)
-    @checks.admin_or_permissions(manage_server=True)
+    @checks.admin_or_permissions(manage_guild=True)
     async def reSortRanks(self, ctx):
-        server = ctx.message.server
-        await self.bot.say("Say the role that will be the first role above the RL Rank hierarchy.")
-        answer = await self.bot.wait_for_message(timeout=30, author=ctx.message.author)
-        if answer is None:
-            await self.bot.say("Cancelling operation; no response.")
-            await asyncio.sleep(10)
+        
+        def embedMsg(text):
+            return discord.Embed(title="**Reordering Roles**", description=text, color=embedColor)
+        
+        guild = ctx.guild
+
+        try:
+            await ctx.message.delete()
+        except discord.errors.Forbidden:
+            global notified
+            notified = notified
+            if not notified:
+                await ctx.send("I require permissions to delete messages. This won't stop the function, but allows me to automatically delete messages.")
+                notified = True
+
+        msgText = "Say the role that will be the first role above the RL Rank hierarchy."
+        msg = await ctx.send(embed=embedMsg(msgText))
+        try:   
+            answer = await ctx.bot.wait_for('message', check=lambda m: (m.author == user), timeout=15)
+        except asyncio.TimeoutError:
+            await msg.edit(embed=embedMsg("Cancelling operation; no response."))
+            await self.killMsg(msg)
             return
         answer = answer.content
-        roleResponse = discord.utils.get(server.roles, name=answer)
+        if "@" in answer:
+            answer = answer[1:]
+        roleResponse = discord.utils.get(guild.roles, name=answer)
         if roleResponse is None:
-            await self.bot.say("That role doesn't exist. Cancelling operation incase of unwanted results.")
-            await asyncio.sleep(10)
+            msgText = "That role doesn't exist. Cancelling operation incase of unwanted results."
+            await msg.edit(embed=embedMsg(msgText))
+            await self.killMsg(msg)
             return
         
         requiredRoles = []
@@ -218,51 +281,79 @@ class RankTags:
             requiredRoles.append(rank.value)
         for rank in Ranks:
             requiredRoles.append("{}\'".format(rank.value))
-        await self.bot.say("Reordering roles; some time will take before they are fully ordered correctly.")
+            
+        msgText = "Reordering roles; some time will take before they are fully ordered correctly."
+        await msg.edit(embed=embedMsg(msgText))
         await self.reOrderRoles(ctx, requiredRoles, roleResponse)
-        
+        msgText = "The roles have been reordered. If there are any problems, DM @RMX."
+        await msg.edit(embed=embedMsg(msgText))
+        await self.killMsg(msg)
+
     async def reOrderRoles(self, ctx, requiredRoles, roleResponse):
-        server = ctx.message.server
+        guild = ctx.guild
         tmp = 1
         for rlRole in requiredRoles:
-            role = discord.utils.get(server.roles, name=rlRole)
+            role = discord.utils.get(guild.roles, name=rlRole)
             try:
-                await self.bot.move_role(server, role, roleResponse.position - tmp)
+                await role.edit(position=roleResponse.position - tmp)
                 tmp += 1
             except discord.errors.HTTPException:
-                await self.bot.say("Apparently I don't have permissions, but this is Discord's fault. Give me the \"Manage Roles\" permission just to be safe.")
+                await ctx.send("Apparently I don't have permissions, but this is Discord's fault. Give me the \"Manage Roles\" permission just to be safe. Roles may not be done correctly.")
                 break
             except AttributeError:
-                await self.bot.say("**WARNING:** The **{}** role is not implemented in this server. \n This may cause the operation to break. Please use `!scanRanks` " \
-                                   "or manually add the command, and then try sorting them again. Skipping for now...".format(rlRole))
-            await asyncio.sleep(1)
-        await self.bot.say("The roles have been ordered; navigate to Server Settings and modify the roles to suit " \
-                           "your liking.")
+                await ctx.send("**WARNING:** The **{}** role is not implemented in this server. \n This may cause the operation to break. Please use `!scanRanks` " \
+                                   "or manually add the role, and then try sorting them again. Skipping for now...".format(rlRole))
+        return
         
-    @commands.command(pass_context=True)
-    @checks.admin_or_permissions(manage_server=True)
-    async def deleteAllRanks(self, ctx, deleteAll:bool=False, areUSure:bool=False, absolutelySure:bool=False):
+    @commands.command(aliases=['del'])
+    @checks.admin_or_permissions(manage_guild=True)
+    async def deleteAllRanks(self, ctx, deleteAll:bool=False):
+        
+        def embedMsg(text, _title:str = "**Deleting RL Roles**"):
+            return discord.Embed(title=_title, description=text, color=embedColor)
+        
         """Deletes all RL Rank roles. USE WISELY."""
         
-        await self.bot.say("Deleting all RL Rank roles...")
+        try:
+            await ctx.message.delete()
+        except discord.errors.Forbidden:
+            global notified
+            notified = notified
+            if not notified:
+                await ctx.send("I require permissions to delete messages. This won't stop the function, but allows me to automatically delete messages.")
+                notified = True
+
+        msg = await ctx.send(embed=embedMsg("Deleting all RL Rank roles..."))
         
-        server = ctx.message.server
+        guild = ctx.guild
         rlRankRoles = []
         for rank in Ranks:
             rlRankRoles.append(rank.value)
             rlRankRoles.append("{}\'".format(rank.value))
             
         for role in rlRankRoles:
-            deleteRole = discord.utils.get(server.roles, name=role)
+            deleteRole = discord.utils.get(guild.roles, name=role)
             if deleteRole is None:
                 continue
-            if (not ("\'" in deleteRole.name)) and deleteAll and areUSure and absolutelySure:
-                await self.bot.delete_role(server, deleteRole)
+            if (not ("\'" in deleteRole.name)) and deleteAll:
+                await deleteRole.delete()
             else:
                 if "\'" in deleteRole.name:
-                    await self.bot.delete_role(server, deleteRole)
+                    await deleteRole.delete()
             
-        await self.bot.say("All RL ranks deleted. Use `!scanRanks` to reinstantiate them.")
+        await msg.edit(embed=embedMsg("All RL ranks deleted. Use `!scanRanks` to reinstantiate them."))
+        await self.killMsg(msg)
+        
+    async def concludeFunction(self, ctx, msgString, delay:int=10):
+        msg = await ctx.send(msgString)
+        await self.killMsg(msg, delay)
+        return
+    
+    async def killMsg(self, msg, delay:int=10):
+        await asyncio.sleep(delay)
+        await msg.delete()
+        return
+
 
 def setup(bot):
     bot.add_cog(RankTags(bot))

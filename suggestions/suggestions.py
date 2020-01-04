@@ -1,114 +1,114 @@
 import discord
-from discord.ext import commands
-from cogs.utils.dataIO import dataIO
+from redbot.core import commands
+from redbot.core import Config
 from copy import deepcopy
-from .utils import checks
+from redbot.core import checks
 import asyncio
 import json
 import os
 
-class Suggestions:
+client = discord.Client()
+notified = False
+
+class Suggestions(commands.Cog):
     """The suggestions cog that controls user suggestions."""
-
-    def __init__(self, bot):
-        self.bot = bot
-        self.filePath = "data/suggestions/channelData.json"
-        self.suggestData = dataIO.load_json(self.filePath)
+    
+    def __init__(self):
+        self.config = Config.get_conf(self, identifier=3302120966)
+        default_guild = { "channels": [] }
+        self.config.register_guild(**default_guild)
         
-    def getEligibleSuggestionChannels(self, server):
-        return self.suggestData[server.id]
-
-    @commands.command(pass_context=True)
+    async def getAvailableChannelIDs(self, _guild):
+        return await self.config.guild(_guild).channels()
+    
+    @commands.command(pass_context=True, aliases=['s'])
     async def suggest(self, ctx):
         """Suggest an idea for the server."""
 
         msg = ctx.message
-        channel = ctx.message.channel
+        
+        if "!s " in msg.content:
+            embedDescription = msg.content[3:]
+        else:
+            embedDescription = msg.content[9:]
+        channel = ctx.channel
         user = msg.author
+        guild = ctx.guild
         hasPerms = True
 
         try:
-            await self.bot.delete_message(ctx.message)
+            await msg.delete()
         except discord.errors.Forbidden:
-            deletePermMsg = await self.bot.say("I require permissions to delete messages so I can delete user messages in this channel (to clean it a little).")
-            hasPerms = False
+            global notified
+            notified = notified
+            if not notified:
+                await ctx.send("I require permissions to delete messages. This doesn't allow me to delete users suggesting in a non-suggestion channel.")
+                notified = True
+                hasPerms = False
         
-        channelIDs = self.getEligibleSuggestionChannels(ctx.message.channel.server)
+        # get list of channels in this guild in self.config
+        channelIDs = await self.getAvailableChannelIDs(guild)
+        
         if not channel.id in channelIDs:
             if len(channelIDs) < 1:
-                await self.bot.say("No channel has been set to receive suggestions. Have a moderator+ run `!suggestChannel`" \
+                await self.concludeFunction(ctx, "No channel has been set to receive suggestions. Have a moderator+ run `!suggestChannel`" \
                                    " in a channel that should accept suggestions.")
                 return
-            firstAvailableChannel = self.bot.get_channel(id=channelIDs[0]).mention
-            deleteChannMsg = await self.bot.say("Wrong channel; use {}.".format(firstAvailableChannel))
-            await asyncio.sleep(5)
-            if not hasPerms:
-                await self.bot.delete_message(deletePermMsg)
-            await self.bot.delete_message(deleteChannMsg)
+            firstAvailableChannel = guild.get_channel(channelIDs[0])
+            print(firstAvailableChannel)
+            await self.concludeFunction(ctx, "Wrong channel; use {}.".format(firstAvailableChannel.mention))
             return
         else:
             channelToPostTo = channel.id
 
         embedTitle = "**Suggestion by {}**".format(user.name)
-        embedDescription = msg.content[9:]
         embedColor = 0x0C60E4
         embed = discord.Embed(title=embedTitle, description=embedDescription, color=embedColor)
 
-        postedMsg = await self.bot.send_message(discord.Object(id=channelToPostTo), embed=embed)
-        await self.bot.add_reaction(postedMsg, "👍")
-        await self.bot.add_reaction(postedMsg, "😑")
-        await self.bot.add_reaction(postedMsg, "👎")
-            
-        if not hasPerms:
-            await asyncio.sleep(5)
-            await self.bot.delete_message(deletePermMsg)
+        postedMsg = await ctx.send(embed=embed)
+        await postedMsg.add_reaction("👍")
+        await postedMsg.add_reaction("😑")
+        await postedMsg.add_reaction("👎")
         return
 
-    @commands.command(pass_context=True)
-    @checks.admin_or_permissions(manage_server=True)
+    @commands.command(pass_context=True, aliases=['sugc'])
+    @checks.admin_or_permissions(manage_guild=True)
     async def suggestChannel(self, ctx):
         """Toggles what channels accept and post suggestions."""
 
-        user = ctx.message.author
-        channel = ctx.message.channel
-        server = channel.server
+        user = ctx.author
+        channel = ctx.channel
+        guild = channel.guild
+        msg = ctx.message
  
         try:
-            self.suggestData = deepcopy(self.suggestData)
-            acceptedChannels = self.suggestData[server.id]
-        except KeyError:
-            self.suggestData[server.id] = []
-            acceptedChannels = []
+            await msg.delete()
+        except discord.errors.Forbidden:
+            global notified
+            notified = notified
+            if not notified:
+                await ctx.send("I require permissions to delete messages. This won't stop the function, but allows me to automatically delete messages.")
+                notified = True
 
-        await self.bot.delete_message(ctx.message)
-        if not (channel.id in self.suggestData[server.id]):
-            acceptedChannels.append(channel.id)
-            self.suggestData[server.id] = acceptedChannels
-            dataIO.save_json(self.filePath, self.suggestData)
-            deleteMsg = await self.bot.say("This channel now accepts `!suggest`ions.")
-            await asyncio.sleep(5)
-            await self.bot.delete_message(deleteMsg)
+        channelIDs = await self.getAvailableChannelIDs(guild)
+        if not channel.id in channelIDs:
+            channel_values = self.config.guild(guild)
+            async with channel_values.channels() as channels:
+                channels.append(channel.id)
+            await self.concludeFunction(ctx, "This channel now accepts `!suggest`ions.")
         else:
-            acceptedChannels.remove(channel.id)
-            self.suggestData[server.id] = acceptedChannels
-            dataIO.save_json(self.filePath, self.suggestData)
-            deleteMsg = await self.bot.say("This channel no longer accepts `!suggest`ions.")
-            await asyncio.sleep(5)
-            await self.bot.delete_message(deleteMsg)
+            channel_values = self.config.guild(guild)
+            async with channel_values.channels() as channels:
+                channels.remove(channel.id)
+            await self.concludeFunction(ctx, "This channel no longer accepts `!suggest`ions.")
         return
-
-def check_folders():
-    if not os.path.exists("data/suggestions"):
-        print("Creating data/suggestions folder...")
-        os.makedirs("data/suggestions")
-
-def check_files():
-    file = "data/suggestions/channelData.json"
-    if not dataIO.is_valid_json(file):
-        print("Creating default suggestions' channelData.json...")
-        dataIO.save_json(file, {})
-
-def setup(bot):
-    check_folders()
-    check_files()
-    bot.add_cog(Suggestions(bot))
+    
+    async def concludeFunction(self, ctx, msgString, delay:int=10):
+        msg = await ctx.send(msgString)
+        await self.killMsg(msg, delay)
+        return
+    
+    async def killMsg(self, msg, delay:int=10):
+        await asyncio.sleep(delay)
+        await msg.delete()
+        return
